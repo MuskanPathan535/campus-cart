@@ -73,9 +73,15 @@ router.get("/:id/messages", protect, async (req, res, next) => {
 router.post("/:id/messages", protect, async (req, res, next) => {
   try {
     const { text } = req.body;
+    
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+    
     const conversation = await findConversationForUser(req.params.id, req.user._id);
-    if (!conversation) return res.status(404).json({ message: "Conversation not found" });
-    if (!text?.trim()) return res.status(400).json({ message: "Message cannot be empty" });
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
 
     const message = await Message.create({
       conversation: conversation._id,
@@ -87,7 +93,7 @@ router.post("/:id/messages", protect, async (req, res, next) => {
     await conversation.save();
 
     const populated = await message.populate("sender", "name");
-    res.status(201).json({ message: populated });
+    res.status(201).json({ success: true, message: populated });
   } catch (error) {
     next(error);
   }

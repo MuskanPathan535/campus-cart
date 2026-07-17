@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, MessageCircle, MoreHorizontal } from "lucide-react";
+import { assetUrl } from "../api.js";
 
 export default function ProductCard({ item, saved, onToggleWishlist, onChat, onDelete, showDelete, userId }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const imageStyle = item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined;
+  const imageStyle = item.imageUrl ? { backgroundImage: `url(${assetUrl(item.imageUrl)})` } : undefined;
   const owner = item.seller?._id === userId;
   const canChat = !!onChat && !owner;
 

@@ -9,15 +9,31 @@ import itemRoutes from "./routes/itemRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
 
-dotenv.config();
-
-const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
+
+const app = express();
+
+const allowedOrigins = Array.from(
+  new Set(
+    (process.env.CLIENT_URL || "http://localhost:5173,http://localhost:5175")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  )
+);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed`));
+      }
+    },
     credentials: true
   })
 );

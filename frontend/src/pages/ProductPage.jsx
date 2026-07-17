@@ -6,7 +6,7 @@ import { assetUrl } from "../api.js";
 export default function ProductPage({ items, savedIds, onToggleWishlist, onChat, onToggleSold, user }) {
   const { id } = useParams();
   const item = useMemo(() => items.find((product) => product._id === id), [items, id]);
-  const owner = item?.seller?._id === user?.id;
+  const owner = item?.seller?._id === user?._id;
 
   if (!item) {
     return (

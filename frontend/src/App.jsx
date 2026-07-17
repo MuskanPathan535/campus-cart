@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { api } from "./api.js";
 import Navbar from "./components/Navbar.jsx";
 import AuthModal from "./components/AuthModal.jsx";
@@ -22,22 +22,57 @@ const categories = [
   { label: "Calculator" }
 ];
 
-export default function App() {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("campus_cart_user") || "null"));
-  const [items, setItems] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
-  const [myListings, setMyListings] = useState([]);
-  const [conversations, setConversations] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [category, setCategory] = useState("All");
-  const [search, setSearch] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
+function AppContent({
+  user,
+  setUser,
+  items,
+  setItems,
+  wishlist,
+  setWishlist,
+  myListings,
+  setMyListings,
+  conversations,
+  setConversations,
+  messages,
+  setMessages,
+  selectedChat,
+  setSelectedChat,
+  category,
+  setCategory,
+  search,
+  setSearch,
+  notice,
+  setNotice,
+  busy,
+  setBusy,
+  authModalOpen,
+  setAuthModalOpen,
+  authMode,
+  setAuthMode,
+  pendingChatItem,
+  setPendingChatItem,
+  savedIds
+}) {
+  const navigate = useNavigate();
 
-  const savedIds = useMemo(() => new Set(wishlist.map((item) => item._id)), [wishlist]);
+  async function startChat(item) {
+    if (!user) {
+      setPendingChatItem(item);
+      setAuthMode("login");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      const data = await api(`/chats/start/${item._id}`, { method: "POST" });
+      setSelectedChat(data.conversation);
+      await loadPrivateData();
+      // Navigate to chat page
+      navigate("/chat");
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
 
   async function loadItems() {
     const params = new URLSearchParams();
@@ -81,7 +116,10 @@ export default function App() {
           setSelectedChat(data.conversation);
           setMessages(data.messages || []);
         })
-        .catch((error) => setNotice(error.message));
+        .catch((error) => {
+          console.error("Auto-refresh error:", error);
+          // Don't show errors from auto-refresh - just log them
+        });
     };
 
     refresh();
@@ -95,6 +133,20 @@ export default function App() {
     setUser(data.user);
     setNotice(`Welcome, ${data.user.name}`);
     setAuthModalOpen(false);
+    
+    // If there's a pending chat item, start the chat after login
+    if (pendingChatItem) {
+      setTimeout(async () => {
+        try {
+          const chatData = await api(`/chats/start/${pendingChatItem._id}`, { method: "POST" });
+          setSelectedChat(chatData.conversation);
+          setPendingChatItem(null);
+          await loadPrivateData();
+        } catch (error) {
+          setNotice(error.message);
+        }
+      }, 100);
+    }
   }
 
   async function handleAuth(event) {
@@ -140,11 +192,16 @@ export default function App() {
     setBusy(true);
 
     try {
+      const form = event.currentTarget;
       await api("/items", {
         method: "POST",
-        body: new FormData(event.currentTarget)
+        body: new FormData(form)
       });
-      event.currentTarget.reset();
+
+      if (typeof form.reset === "function") {
+        form.reset();
+      }
+
       setNotice("Item listed successfully");
       await Promise.all([loadItems(), loadPrivateData()]);
     } catch (error) {
@@ -178,22 +235,6 @@ export default function App() {
     }
   }
 
-  async function startChat(item) {
-    if (!user) {
-      setAuthMode("login");
-      setAuthModalOpen(true);
-      return;
-    }
-
-    try {
-      const data = await api(`/chats/start/${item._id}`, { method: "POST" });
-      setSelectedChat(data.conversation);
-      await loadPrivateData();
-    } catch (error) {
-      setNotice(error.message);
-    }
-  }
-
   async function deleteItem(itemId) {
     try {
       await api(`/items/${itemId}`, { method: "DELETE" });
@@ -206,19 +247,38 @@ export default function App() {
 
   async function sendMessage(event) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    
+    if (!selectedChat) {
+      setNotice("Please select a chat first");
+      return;
+    }
+    
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const text = form.get("text")?.toString().trim();
     if (!text) return;
 
     try {
+      // Send the message
       await api(`/chats/${selectedChat._id}/messages`, {
         method: "POST",
         body: JSON.stringify({ text })
       });
-      event.currentTarget.reset();
-      const data = await api(`/chats/${selectedChat._id}/messages`);
-      setMessages(data.messages || []);
-      await loadPrivateData();
+      
+      // Clear the form
+      if (formElement && typeof formElement.reset === "function") {
+        formElement.reset();
+      }
+      
+      // Refresh messages (don't show errors from this)
+      api(`/chats/${selectedChat._id}/messages`)
+        .then((data) => {
+          setMessages(data.messages || []);
+          if (data.conversation) {
+            setSelectedChat(data.conversation);
+          }
+        })
+        .catch((err) => console.error("Refresh error:", err));
     } catch (error) {
       setNotice(error.message);
     }
@@ -227,71 +287,129 @@ export default function App() {
   function refreshChat() {
     if (!selectedChat) return;
     api(`/chats/${selectedChat._id}/messages`)
-      .then((data) => setMessages(data.messages || []))
-      .catch((error) => setNotice(error.message));
+      .then((data) => {
+        setMessages(data.messages || []);
+        if (data.conversation) {
+          setSelectedChat(data.conversation);
+        }
+      })
+      .catch((error) => console.error("Refresh error:", error));
   }
 
   return (
-    <BrowserRouter>
-      <div className="app-shell">
-        <Navbar
-          user={user}
-          search={search}
-          category={category}
-          categories={categories}
-          onSearchChange={setSearch}
-          onCategoryChange={setCategory}
-          onOpenAuth={openAuthModal}
-          onLogout={logout}
-        />
+    <div className="app-shell">
+      <Navbar
+        user={user}
+        search={search}
+        category={category}
+        categories={categories}
+        onSearchChange={setSearch}
+        onCategoryChange={setCategory}
+        onOpenAuth={openAuthModal}
+        onLogout={logout}
+      />
 
-        <main className="app-main">
-          {notice && (
-            <div className="notice" onClick={() => setNotice("")}>{notice}</div>
-          )}
-
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <HomePage
-                  items={items}
-                  categories={categories}
-                  activeCategory={category}
-                  onCategorySelect={setCategory}
-                  savedIds={savedIds}
-                  onToggleWishlist={toggleWishlist}
-                  onChat={startChat}
-                  userId={user?.id}
-                />
-              }
-            />
-            <Route path="/sell" element={<SellPage user={user} busy={busy} onSubmit={createItem} />} />
-            <Route
-              path="/wishlist"
-              element={<WishlistPage items={wishlist} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} userId={user?.id} />}
-            />
-            <Route
-              path="/chat"
-              element={<ChatPage user={user} conversations={conversations} selectedChat={selectedChat} setSelectedChat={setSelectedChat} messages={messages} onSend={sendMessage} onRefresh={refreshChat} />}
-            />
-            <Route
-              path="/product/:id"
-              element={<ProductPage items={items} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} user={user} />}
-            />
-            <Route
-              path="/listings"
-              element={<ListingsPage items={myListings} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} onDelete={deleteItem} userId={user?.id} />}
-            />
-            <Route path="/profile" element={<ProfilePage user={user} />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </main>
-
-        {authModalOpen && (
-          <AuthModal mode={authMode} setMode={setAuthMode} busy={busy} onSubmit={handleAuth} onClose={closeAuthModal} />
+      <main className="app-main">
+        {notice && (
+          <div className="notice" onClick={() => setNotice("")}>{notice}</div>
         )}
-      </div>
+
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                items={items}
+                categories={categories}
+                activeCategory={category}
+                onCategorySelect={setCategory}
+                savedIds={savedIds}
+                onToggleWishlist={toggleWishlist}
+                onChat={startChat}
+                userId={user?._id}
+              />
+            }
+          />
+          <Route path="/sell" element={<SellPage user={user} busy={busy} onSubmit={createItem} />} />
+          <Route
+            path="/wishlist"
+            element={<WishlistPage items={wishlist} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} userId={user?._id} />}
+          />
+          <Route
+            path="/chat"
+            element={<ChatPage user={user} conversations={conversations} selectedChat={selectedChat} setSelectedChat={setSelectedChat} messages={messages} onSend={sendMessage} onRefresh={refreshChat} />}
+          />
+          <Route
+            path="/product/:id"
+            element={<ProductPage items={items} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} user={user} />}
+          />
+          <Route
+            path="/listings"
+            element={<ListingsPage items={myListings} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} onDelete={deleteItem} userId={user?._id} />}
+          />
+          <Route path="/profile" element={<ProfilePage user={user} />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </main>
+
+      {authModalOpen && (
+        <AuthModal mode={authMode} setMode={setAuthMode} busy={busy} onSubmit={handleAuth} onClose={closeAuthModal} />
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("campus_cart_user") || "null"));
+  const [items, setItems] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [myListings, setMyListings] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [pendingChatItem, setPendingChatItem] = useState(null);
+
+  const savedIds = useMemo(() => new Set(wishlist.map((item) => item._id)), [wishlist]);
+
+  return (
+    <BrowserRouter>
+      <AppContent
+        user={user}
+        setUser={setUser}
+        items={items}
+        setItems={setItems}
+        wishlist={wishlist}
+        setWishlist={setWishlist}
+        myListings={myListings}
+        setMyListings={setMyListings}
+        conversations={conversations}
+        setConversations={setConversations}
+        messages={messages}
+        setMessages={setMessages}
+        selectedChat={selectedChat}
+        setSelectedChat={setSelectedChat}
+        category={category}
+        setCategory={setCategory}
+        search={search}
+        setSearch={setSearch}
+        notice={notice}
+        setNotice={setNotice}
+        busy={busy}
+        setBusy={setBusy}
+        authModalOpen={authModalOpen}
+        setAuthModalOpen={setAuthModalOpen}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        pendingChatItem={pendingChatItem}
+        setPendingChatItem={setPendingChatItem}
+        savedIds={savedIds}
+      />
     </BrowserRouter>
   );
 }

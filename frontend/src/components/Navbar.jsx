@@ -66,9 +66,15 @@ export default function Navbar({
           <Heart size={18} />
         </Link>
 
-        <Link to="/chat" className="icon-button" title="Chat">
-          <MessageCircle size={18} />
-        </Link>
+        {user ? (
+          <Link to="/chat" className="icon-button" title="Chat">
+            <MessageCircle size={18} />
+          </Link>
+        ) : (
+          <button type="button" className="icon-button" title="Chat" onClick={() => onOpenAuth("login")}>
+            <MessageCircle size={18} />
+          </button>
+        )}
 
         {user ? (
           <div className="profile-menu">
