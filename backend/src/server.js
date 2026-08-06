@@ -65,6 +65,7 @@ connectDB()
   .then(() => {
     app.listen(port, () => {
       console.log(`Campus Cart API running on port ${port}`);
+      console.log(`MONGODB connected`);
     });
   })
   .catch((error) => {
