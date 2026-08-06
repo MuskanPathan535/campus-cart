@@ -18,7 +18,7 @@ const app = express();
 
 const allowedOrigins = Array.from(
   new Set(
-    (process.env.CLIENT_URL || "http://localhost:5173,http://localhost:5175")
+    (process.env.CLIENT_URL || "http://localhost:5173,https://campus-cart-sable-sigma.vercel.app")
       .split(",")
       .map((origin) => origin.trim())
       .filter(Boolean)
