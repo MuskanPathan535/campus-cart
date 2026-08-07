@@ -20,7 +20,7 @@ export default function SellPage({ user, busy, onSubmit }) {
                 <option>Electronics</option>
                 <option>Cycle</option>
                 <option>Furniture</option>
-                <option>Hostel</option>
+                <option>Other</option>
                 <option>Calculator</option>
               </select>
             </div>
@@ -52,4 +52,3 @@ export default function SellPage({ user, busy, onSubmit }) {
     </div>
   );
 }
-

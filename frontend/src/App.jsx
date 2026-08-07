@@ -18,7 +18,7 @@ const categories = [
   { label: "Electronics" },
   { label: "Cycle" },
   { label: "Furniture" },
-  { label: "Hostel" },
+  { label: "Other" },
   { label: "Calculator" }
 ];
 
@@ -326,14 +326,14 @@ function AppContent({
                 savedIds={savedIds}
                 onToggleWishlist={toggleWishlist}
                 onChat={startChat}
-                userId={user?._id}
+                userId={user?.id}
               />
             }
           />
           <Route path="/sell" element={<SellPage user={user} busy={busy} onSubmit={createItem} />} />
           <Route
             path="/wishlist"
-            element={<WishlistPage items={wishlist} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} userId={user?._id} />}
+            element={<WishlistPage items={wishlist} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} userId={user?.id} />}
           />
           <Route
             path="/chat"
@@ -345,7 +345,7 @@ function AppContent({
           />
           <Route
             path="/listings"
-            element={<ListingsPage items={myListings} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} onDelete={deleteItem} userId={user?._id} />}
+            element={<ListingsPage items={myListings} savedIds={savedIds} onToggleWishlist={toggleWishlist} onChat={startChat} onToggleSold={toggleSold} onDelete={deleteItem} userId={user?.id} />}
           />
           <Route path="/profile" element={<ProfilePage user={user} />} />
           <Route path="*" element={<NotFoundPage />} />

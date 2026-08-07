@@ -8,7 +8,7 @@ const itemSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: ["Books", "Calculator", "Cycle", "Laptop", "Hostel", "Other"]
+      enum: ["Books", "Electronics","Calculator", "Cycle", "Laptop","Furniture", "Other"]
     },
     condition: {
       type: String,

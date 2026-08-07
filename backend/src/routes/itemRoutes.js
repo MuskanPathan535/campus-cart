@@ -3,10 +3,11 @@ import Item from "../models/Item.js";
 import User from "../models/User.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
+import imageKit from "../utils/imagekitClient.js";
 
 const router = express.Router();
 
-const categories = ["Books", "Calculator", "Cycle", "Laptop", "Hostel", "Other"];
+const categories = ["Books", "Electronics","Calculator", "Cycle", "Laptop", "Furniture", "Other"];
 
 router.get("/", async (req, res, next) => {
   try {
@@ -67,6 +68,18 @@ router.post("/", protect, upload.single("image"), async (req, res, next) => {
       return res.status(400).json({ message: "All item fields are required" });
     }
 
+    let imageUrl = "";
+    if (req.file) {
+      const uploadResult = await imageKit.upload({
+        file: req.file.buffer.toString("base64"),
+        fileName: `${Date.now()}-${req.file.originalname.replace(/[^a-z0-9.]+/gi, "-")}`,
+        folder: "/campus-cart",
+        useUniqueFileName: true
+      });
+
+      imageUrl = uploadResult.url || "";
+    }
+
     const item = await Item.create({
       title,
       description,
@@ -74,7 +87,7 @@ router.post("/", protect, upload.single("image"), async (req, res, next) => {
       category,
       condition,
       location,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+      imageUrl,
       seller: req.user._id
     });
 
@@ -140,3 +153,11 @@ router.delete("/:id", protect, async (req, res, next) => {
 });
 
 export default router;
+
+
+
+
+
+
+
+
