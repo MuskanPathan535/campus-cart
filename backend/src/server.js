@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes.js";
 import itemRoutes from "./routes/itemRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import debugRoutes from "./routes/debugRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +52,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Dev-only debug endpoints
 if (process.env.NODE_ENV !== "production") {

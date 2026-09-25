@@ -1401,3 +1401,32 @@ select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+
+
+
+
+.price-suggestion {
+  padding: 20px;
+  border: 1px solid #b9e5d9;
+  border-radius: 12px;
+  background: #f0fdf9;
+  margin: 12px 0;
+}
+
+.price-suggestion h3 {
+  color: #116b60;
+  margin-bottom: 10px;
+}
+
+.price-suggestion h2 {
+  color: #087f5b;
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+.price-suggestion p {
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
